@@ -1,169 +1,201 @@
-# 🛫 Aerumentis
+# AERUMENTIS
 
-**AI-powered operational brain for airports, maintenance teams, and airlines.**
+**An AI-powered operational brain for airports, maintenance teams, and airlines.**
 
-| Module | Name | Status | Description |
-|--------|------|--------|-------------|
-| 1 | **Maintenance Documentation AI** | ✅ Phase 1 (Active) | RAG-powered chat with maintenance manuals, service bulletins, and ADs |
-| 2 | **Aerospace Knowledge Brain** | 🔜 Phase 2 | Captures institutional knowledge from senior mechanics, repair histories, voice interviews |
-| 3 | **Airport Ground Operations** | 🔜 Phase 3 | Real-time aircraft tracking, crew assignments, turnaround monitoring, predictive delay alerts |
+Aerumentis unifies three critical aviation operations into a single, modern, connected platform — replacing the fragmented, outdated software that plagues the aerospace industry.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
+
+Three modules, one ecosystem:
+
+### Phase 1 — Maintenance Documentation AI
+Upload maintenance manuals, service bulletins, airworthiness directives, and SOPs. Mechanics ask questions in plain English and get instant answers with citation links back to the source material. Powered by RAG (Retrieval-Augmented Generation) with vector search.
+
+### Phase 2 — Aerospace Knowledge Brain
+Capture decades of technician experience before it walks out the door. Voice interviews, repair histories, technician notes, and incident reports are indexed and searchable. The killer feature: "Have we seen this fuel pressure issue before?" → the AI searches years of history and returns pattern matches with common causes and resolutions.
+
+### Phase 3 — Airport Ground Operations AI
+Real-time operational intelligence for the ramp. Track aircraft, orchestrate turnarounds, assign crew and equipment, and get AI-powered delay predictions before they happen. The dashboard gives operations managers a live snapshot of everything happening on the ground.
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **API Framework** | FastAPI (async, Python 3.11+) |
+| **Database** | PostgreSQL (SQLAlchemy 2.0 + Alembic migrations) |
+| **Vector Store** | Qdrant (semantic search & embeddings) |
+| **AI/LLM** | OpenAI / OpenRouter (configurable) |
+| **Embeddings** | OpenAI text-embedding-3-small (1536 dimensions) |
+| **Document Processing** | PyPDF2, python-docx, custom chunking |
+| **Auth** | JWT + API Key (SHA-256 hashed, scoped permissions) |
+| **Testing** | pytest + pytest-asyncio (138 tests) |
+| **CI/CD** | GitHub Actions |
+| **Containerization** | Docker + docker-compose |
+
+---
+
+## Project Structure
 
 ```
-Aerumentis/
+AERUMENTIS/
 ├── src/aerumentis/
-│   ├── core/               # Config, security (JWT/RBAC), database (async SQLAlchemy), logging
-│   ├── api/v1/             # FastAPI routers (auth, documents, chat, health)
-│   ├── models/             # Pydantic request/response schemas
-│   ├── services/           # LLM, embeddings, vector store, RAG engine, document processing
-│   ├── modules/
-│   │   ├── maintenance/    # Module 1 — Documentation AI
-│   │   ├── knowledge/      # Module 2 — Knowledge Brain (stub)
-│   │   └── operations/     # Module 3 — Ground Ops (stub)
-│   ├── main.py             # FastAPI app entry point
-│   └── worker.py           # Celery worker for async tasks
-├── tests/                  # Unit + integration tests
-├── .github/workflows/      # CI/CD pipeline
-├── Dockerfile              # Multi-stage production build
-├── docker-compose.yml      # Full stack: API + Qdrant + Postgres + Redis + Celery
-└── pyproject.toml          # Python project config
+│   ├── main.py                    # FastAPI app factory
+│   ├── api/v1/                    # Core API endpoints
+│   │   ├── auth.py                # Authentication (register, login, me)
+│   │   ├── chat.py                # RAG chat with documents
+│   │   ├── documents.py           # Document upload & management
+│   │   └── health.py              # Health & system info
+│   ├── core/                      # Cross-cutting concerns
+│   │   ├── config.py              # Pydantic settings
+│   │   ├── database.py            # SQLAlchemy engine, session, Base
+│   │   ├── security.py            # JWT, API keys, RBAC permissions
+│   │   ├── hashing.py             # SHA-256 API key hashing
+│   │   └── logging.py             # Structured logging
+│   ├── models/                    # Database models
+│   │   ├── database_models.py     # Phase 1: Organization, User, ApiKey, Document, ChatSession, ChatMessage
+│   │   ├── phase2_models.py       # Phase 2: KnowledgeEntry, VoiceInterview, KnowledgeNode, KnowledgeEdge, RepairHistory
+│   │   ├── phase3_models.py       # Phase 3: Aircraft, Turnaround, TurnaroundTask, GroundCrew, Equipment, OperationsAlert
+│   │   └── schemas.py             # Pydantic request/response schemas
+│   ├── modules/                   # Feature modules (modular architecture)
+│   │   ├── knowledge/routers/     # Phase 2 API endpoints
+│   │   ├── maintenance/routers/   # Phase 1 troubleshooting
+│   │   └── operations/routers/    # Phase 3 API endpoints
+│   └── services/                  # Business logic
+│       ├── api_key_service.py     # API key CRUD + hashing
+│       ├── chat_history_service.py# Chat session persistence
+│       ├── document_processor.py  # PDF/DOCX parsing + chunking
+│       ├── document_metadata_service.py
+│       ├── embedding_service.py   # OpenAI embeddings
+│       ├── ingestion_service.py   # Document → chunks → vectors pipeline
+│       ├── knowledge_service.py   # Knowledge brain (Phase 2)
+│       ├── llm_service.py         # LLM abstraction (OpenAI/OpenRouter)
+│       ├── operations_service.py  # Ground ops (Phase 3)
+│       ├── rag_engine.py          # Retrieval + generation
+│       └── vector_store.py        # Qdrant interface
+├── alembic/                       # Database migrations
+│   └── versions/
+│       ├── 001_initial_schema.py
+│       ├── 002_phase2_knowledge.py
+│       └── 003_phase3_operations.py
+├── tests/                         # 138 tests (unit + integration)
+├── docker-compose.yml             # PostgreSQL + Qdrant + API
+├── Dockerfile
+├── pyproject.toml
+└── .github/workflows/ci.yml       # CI pipeline
 ```
-
-### Technology Stack
-
-| Layer | Technology | Why |
-|-------|-----------|-----|
-| API Framework | FastAPI | Async, auto-docs, type-safe |
-| Database | PostgreSQL + SQLAlchemy 2.0 (async) | ACID, mature ecosystem |
-| Vector Database | Qdrant | Purpose-built for similarity search |
-| LLM | OpenAI / OpenRouter (OpenAI-compatible) | Flexible model selection, fallback |
-| Embeddings | OpenAI text-embedding-3-small | Cost-effective, 1536-dim |
-| RAG | Custom pipeline (retrieval + reranking + citations) | Full control, aerospace-optimized |
-| Task Queue | Celery + Redis | Async document ingestion |
-| Auth | JWT + RBAC + API Keys | Enterprise-grade, multi-tenant |
-| Containerization | Docker + Docker Compose | Reproducible, scalable |
-| CI/CD | GitHub Actions | Automated lint, test, build |
-| Logging | structlog (JSON in prod) | Observable, structured |
 
 ---
 
-## 🚀 Quick Start
+## API Overview
 
-### Docker Compose (Recommended)
+### Authentication
+- `POST /api/v1/auth/register` — Create org + admin user
+- `POST /api/v1/auth/login` — Get JWT token
+- `GET /api/v1/auth/me` — Current user info
+- `POST /api/v1/auth/api-keys` — Create scoped API key
+- `GET /api/v1/auth/api-keys` — List API keys
+- `DELETE /api/v1/auth/api-keys/{id}` — Revoke API key
 
+### Documents (Phase 1)
+- `POST /api/v1/documents/upload` — Upload PDF/DOCX/TXT
+- `GET /api/v1/documents` — List documents
+- `GET /api/v1/documents/{id}` — Get document details
+- `DELETE /api/v1/documents/{id}` — Delete document
+- `POST /api/v1/documents/{id}/reindex` — Re-index document
+
+### Chat (Phase 1)
+- `POST /api/v1/chat` — Ask a question, get RAG-powered answer with citations
+- `GET /api/v1/chat/sessions` — List chat sessions
+- `GET /api/v1/chat/sessions/{id}/messages` — Get chat history
+
+### Knowledge (Phase 2)
+- `POST /api/v1/knowledge/entries` — Create knowledge entry
+- `GET /api/v1/knowledge/entries` — List/filter entries
+- `POST /api/v1/knowledge/search` — Semantic search
+- `POST /api/v1/knowledge/patterns` — **Pattern matching** ("Have we seen this before?")
+- `POST /api/v1/knowledge/repairs` — Create repair history
+- `GET /api/v1/knowledge/repairs` — List repair history
+- `POST /api/v1/knowledge/interviews` — Create voice interview
+- `PUT /api/v1/knowledge/interviews/{id}/transcript` — Add transcript
+- `POST /api/v1/knowledge/interviews/{id}/extract` — AI-extract knowledge from transcript
+- `GET /api/v1/knowledge/graph` — Knowledge graph visualization data
+- `GET /api/v1/knowledge/stats` — Knowledge statistics
+
+### Operations (Phase 3)
+- `POST /api/v1/operations/aircraft` — Register aircraft
+- `GET /api/v1/operations/aircraft` — List active aircraft
+- `PATCH /api/v1/operations/aircraft/{id}/status` — Update aircraft status
+- `POST /api/v1/operations/turnarounds` — Create turnaround (auto-generates tasks)
+- `GET /api/v1/operations/turnarounds` — List turnarounds
+- `GET /api/v1/operations/turnarounds/flight/{flight}` — Full turnaround dashboard view
+- `PATCH /api/v1/operations/tasks/{id}` — Update task status
+- `POST /api/v1/operations/crew` — Create crew member
+- `POST /api/v1/operations/crew/assign` — Assign crew to task
+- `GET /api/v1/operations/crew/available` — Find available crew
+- `POST /api/v1/operations/equipment` — Register equipment
+- `POST /api/v1/operations/equipment/assign` — Assign equipment to task
+- `GET /api/v1/operations/turnarounds/{id}/risk` — AI delay prediction
+- `POST /api/v1/operations/alerts` — Create alert
+- `POST /api/v1/operations/alerts/{id}/acknowledge` — Acknowledge alert
+- `POST /api/v1/operations/alerts/{id}/resolve` — Resolve alert
+- `GET /api/v1/operations/dashboard` — **Full operations dashboard**
+
+---
+
+## Getting Started
+
+### Prerequisites
+- Python 3.11+
+- PostgreSQL 14+
+- Qdrant (or Docker to run it)
+- OpenAI API key (or OpenRouter)
+
+### Quick Start with Docker
 ```bash
-git clone https://github.com/aerumentis/AERUMENTIS.git
-cd AERUMENTIS
-cp .env.example .env
-# Edit .env: set OPENAI_API_KEY=sk-your-key-here
-docker-compose up --build
-# API at http://localhost:8000, docs at http://localhost:8000/docs
+docker-compose up -d
+# API available at http://localhost:8000
+# API docs at http://localhost:8000/docs
 ```
 
-### Local Development
-
+### Manual Setup
 ```bash
-git clone https://github.com/aerumentis/AERUMENTIS.git
-cd AERUMENTIS
-chmod +x scripts/setup.sh && ./scripts/setup.sh
-docker-compose up -d postgres qdrant redis
-source venv/bin/activate
+pip install -e .
+alembic upgrade head
 uvicorn aerumentis.main:app --reload
-pytest tests/unit/ -v
+```
+
+### Environment Variables
+```
+DATABASE_URL=postgresql+asyncpg://user:pass@localhost/aerumentis
+QDRANT_URL=http://localhost:6333
+OPENAI_API_KEY=sk-...
+JWT_SECRET=your-secret-key
 ```
 
 ---
 
-## 📖 API Overview
-
-### Upload a Maintenance Document
-
+## Testing
 ```bash
-curl -X POST http://localhost:8000/api/v1/documents/upload \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -F "file=@737_ng_amm.pdf" \
-  -F "aircraft_model=737 NG" \
-  -F "manual_type=AMM"
+PYTHONPATH=src pytest tests/ -v
 ```
-
-### Query the Maintenance AI
-
-```bash
-curl -X POST http://localhost:8000/api/v1/chat/query \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"question": "How do I replace the hydraulic pump on a Boeing 737 NG?", "aircraft_model": "737 NG"}'
-```
-
-**Response:**
-```json
-{
-  "answer": "To replace the hydraulic pump on a Boeing 737 NG...",
-  "citations": [{"filename": "737_ng_amm.pdf", "chunk_index": 42, "score": 0.92, "page": 1042}],
-  "model": "gpt-4o",
-  "tokens_used": 1523,
-  "total_time_ms": 1840.5
-}
-```
+138 tests — unit + integration — all passing.
 
 ---
 
-## 🔐 Security
+## Permissions (RBAC)
 
-- JWT authentication (access 30min + refresh 7 days)
-- RBAC with 6 roles (superadmin → viewer) and granular permissions
-- API key support for programmatic access
-- Multi-tenant organization scoping
-- CORS, GZip middleware, input validation
-
----
-
-## 🐳 Docker Services
-
-| Service | Port | Purpose |
-|---------|------|---------|
-| API | 8000 | FastAPI application |
-| PostgreSQL | 5432 | Relational database |
-| Qdrant | 6333/6334 | Vector database |
-| Redis | 6379 | Caching + Celery broker |
-| Celery Worker | — | Async document ingestion |
+| Role | Permissions |
+|---|---|
+| **admin** | Full access to all endpoints |
+| **maintainer** | Upload docs, manage knowledge, chat |
+| **operator** | View operations, manage crew/tasks |
+| **viewer** | Read-only access |
 
 ---
 
-## 🛣️ Roadmap
-
-### Phase 1 ✅ — Maintenance Documentation AI
-- [x] RAG pipeline (embed → retrieve → generate → cite)
-- [x] PDF, DOCX, TXT, MD, HTML ingestion
-- [x] Intelligent text chunking with overlap
-- [x] Vector similarity search with metadata filtering
-- [x] Streaming responses (SSE)
-- [x] JWT auth + RBAC + API keys
-- [x] Async ingestion via Celery
-- [x] Query rewriting for conversational context
-
-### Phase 2 🔜 — Aerospace Knowledge Brain
-- [ ] Technician note capture (text + voice)
-- [ ] Repair history storage and search
-- [ ] Voice interview transcription
-- [ ] Searchable knowledge graph
-- [ ] AI-generated recommendations
-
-### Phase 3 🔜 — Airport Ground Operations
-- [ ] Real-time aircraft tracking
-- [ ] Gate management dashboard
-- [ ] Ground crew assignment system
-- [ ] Turnaround monitoring
-- [ ] Predictive delay alerts (ML)
-- [ ] Mobile-optimized control tower dashboard
-
----
-
-## 📄 License
-
-Proprietary. All rights reserved.
-
-**Aerumentis** — Making aerospace software fast, modern, mobile, searchable, and connected.
+## License
+Proprietary — BridgeLine Services
