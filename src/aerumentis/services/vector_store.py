@@ -82,6 +82,28 @@ class VectorStore:
         logger.info("vectors_upserted", collection=full_name, count=len(points))
         return len(points)
 
+    async def upsert_points(
+        self, collection_name: str, points: list[tuple[str, list[float], dict]]
+    ) -> int:
+        """Upsert points from (id, vector, payload) tuples."""
+        vector_points = [VectorPoint(id=p[0], vector=p[1], payload=p[2]) for p in points]
+        return await self.upsert(collection_name, vector_points)
+
+    async def delete_points(self, collection_name: str, point_ids: list[str]) -> None:
+        """Delete points by their IDs."""
+        if not self._client or not point_ids:
+            return
+        full_name = settings.qdrant_collection(collection_name)
+        try:
+            await self._client.delete(
+                collection_name=full_name,
+                points_selector=qdrant_models.PointIdsList(points=point_ids),
+                wait=True,
+            )
+            logger.info("points_deleted", collection=full_name, count=len(point_ids))
+        except Exception as e:
+            logger.warning("delete_points_failed", collection=full_name, error=str(e))
+
     async def search(
         self, collection_name: str, query_vector: list[float],
         top_k: int = 5, score_threshold: float | None = None,

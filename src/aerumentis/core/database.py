@@ -56,6 +56,9 @@ class UUIDMixin:
 from aerumentis.models.database_models import (  # noqa: E402, F401
     ApiKey, ChatMessage, ChatSession, Document, Organization, User,
 )
+from aerumentis.models.phase2_models import (  # noqa: E402, F401
+    KnowledgeEdge, KnowledgeEntry, KnowledgeNode, RepairHistory, VoiceInterview,
+)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
