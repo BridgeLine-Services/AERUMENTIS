@@ -16,6 +16,7 @@ from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer, APIKeyHea
 from pydantic import BaseModel
 
 from aerumentis.core.config import get_settings
+from aerumentis.core.database import async_session_factory
 from aerumentis.core.logging import get_logger
 
 logger = get_logger("aerumentis.security")
@@ -46,6 +47,8 @@ class Permission(str, Enum):
     OPS_MANAGE = "ops:manage"
     USER_MANAGE = "user:manage"
     SYSTEM_ADMIN = "system:admin"
+    API_KEY_MANAGE = "apikey:manage"
+    CHAT_HISTORY = "chat:history"
 
 
 ROLE_PERMISSIONS: dict[UserRole, set[Permission]] = {
@@ -55,18 +58,22 @@ ROLE_PERMISSIONS: dict[UserRole, set[Permission]] = {
         Permission.RAG_QUERY, Permission.RAG_ADMIN,
         Permission.KNOWLEDGE_WRITE, Permission.KNOWLEDGE_READ,
         Permission.OPS_VIEW, Permission.OPS_MANAGE, Permission.USER_MANAGE,
+        Permission.API_KEY_MANAGE, Permission.CHAT_HISTORY,
     },
     UserRole.ENGINEER: {
         Permission.DOCUMENT_READ, Permission.RAG_QUERY,
         Permission.KNOWLEDGE_WRITE, Permission.KNOWLEDGE_READ, Permission.OPS_VIEW,
+        Permission.CHAT_HISTORY, Permission.API_KEY_MANAGE,
     },
     UserRole.MAINTENANCE_TECH: {
         Permission.DOCUMENT_READ, Permission.RAG_QUERY,
         Permission.KNOWLEDGE_WRITE, Permission.KNOWLEDGE_READ,
+        Permission.CHAT_HISTORY, Permission.API_KEY_MANAGE,
     },
     UserRole.GROUND_OPS: {
         Permission.DOCUMENT_READ, Permission.RAG_QUERY,
         Permission.OPS_VIEW, Permission.OPS_MANAGE,
+        Permission.CHAT_HISTORY,
     },
     UserRole.VIEWER: {
         Permission.DOCUMENT_READ, Permission.RAG_QUERY,
@@ -101,10 +108,8 @@ class AuthenticatedUser(BaseModel):
 
 
 def create_access_token(
-    user_id: str | uuid.UUID,
-    role: UserRole,
-    org_id: str | None = None,
-    email: str | None = None,
+    user_id: str | uuid.UUID, role: UserRole,
+    org_id: str | None = None, email: str | None = None,
     expires_minutes: int | None = None,
 ) -> str:
     expire = datetime.now(timezone.utc) + timedelta(
@@ -198,17 +203,26 @@ async def get_current_user(
     bearer: HTTPAuthorizationCredentials | None = Security(bearer_scheme),
     api_key: str | None = Security(api_key_header),
 ) -> AuthenticatedUser:
+    # Try Bearer token first
     if bearer and bearer.credentials:
         token_data = decode_token(bearer.credentials)
         return AuthenticatedUser(
             user_id=token_data.sub, role=token_data.role,
             org_id=token_data.org_id, email=token_data.email, auth_method="jwt",
         )
+
+    # Try API key — lazy import to avoid circular dependency
     if api_key and api_key.startswith(settings.api_key_prefix):
+        from aerumentis.services.api_key_service import validate_api_key
+        async with async_session_factory() as db:
+            user_info = await validate_api_key(db, api_key)
+        if user_info:
+            return AuthenticatedUser(**user_info)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="API key authentication not yet implemented. Use Bearer token.",
+            detail="Invalid or expired API key",
         )
+
     raise HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Not authenticated. Provide a Bearer token or X-API-Key header.",

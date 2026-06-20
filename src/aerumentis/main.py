@@ -19,6 +19,7 @@ from aerumentis.core.config import get_settings
 from aerumentis.core.database import close_db, init_db
 from aerumentis.core.logging import get_logger
 from aerumentis.modules.knowledge.routers.knowledge import router as knowledge_router
+from aerumentis.modules.maintenance.routers.maintenance import router as maintenance_router
 from aerumentis.modules.operations.routers.operations import router as operations_router
 
 settings = get_settings()
@@ -42,9 +43,7 @@ async def lifespan(app: FastAPI):
     logger.info("aerumentis_ready")
     yield
     logger.info("aerumentis_shutting_down")
-    for closer_name, closer in [
-        ("db", close_db),
-    ]:
+    for closer_name, closer in [("db", close_db)]:
         try:
             await closer()
         except Exception:
@@ -70,9 +69,12 @@ def create_app() -> FastAPI:
         title="Aerumentis",
         description=(
             "AI-powered operational brain for airports, maintenance teams, and airlines.\n\n"
-            "**Module 1**: Maintenance Documentation AI (RAG-powered)\n"
+            "**Module 1**: Maintenance Documentation AI (RAG-powered) — Active\n"
             "**Module 2**: Aerospace Knowledge Brain (Phase 2)\n"
-            "**Module 3**: Airport Ground Operations (Phase 3)"
+            "**Module 3**: Airport Ground Operations (Phase 3)\n\n"
+            "## Authentication\n"
+            "All protected endpoints require either a `Bearer` JWT token or an `X-API-Key` header.\n"
+            "Register at `/api/v1/auth/register` to get a token, or create API keys at `/api/v1/auth/api-keys`."
         ),
         version="0.1.0", docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json", lifespan=lifespan,
     )
@@ -86,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(auth_router, prefix=api_prefix)
     app.include_router(documents_router, prefix=api_prefix)
     app.include_router(chat_router, prefix=api_prefix)
+    app.include_router(maintenance_router, prefix=api_prefix)
     app.include_router(knowledge_router, prefix=api_prefix)
     app.include_router(operations_router, prefix=api_prefix)
 
@@ -95,8 +98,11 @@ def create_app() -> FastAPI:
             "name": "Aerumentis", "version": "0.1.0",
             "description": "AI-powered operational brain for airports, maintenance teams, and airlines.",
             "docs": "/docs", "health": "/api/v1/health",
-            "modules": {"maintenance": "Module 1 — Active", "knowledge": "Module 2 — Phase 2 (stub)",
-                        "operations": "Module 3 — Phase 3 (stub)"},
+            "modules": {
+                "maintenance": "Module 1 — Active (Documentation AI + Troubleshooting + Manual Search)",
+                "knowledge": "Module 2 — Phase 2 (stub)",
+                "operations": "Module 3 — Phase 3 (stub)",
+            },
         }
     return app
 

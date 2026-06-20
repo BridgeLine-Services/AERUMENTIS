@@ -52,35 +52,10 @@ class UUIDMixin:
     )
 
 
-class Organization(UUIDMixin, TimestampMixin, Base):
-    __tablename__ = "organizations"
-    name: Mapped[str] = mapped_column(String(255), nullable=False)
-    slug: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
-    org_type: Mapped[str] = mapped_column(String(50), nullable=False)
-    is_active: Mapped[bool] = mapped_column(default=True)
-
-
-class User(UUIDMixin, TimestampMixin, Base):
-    __tablename__ = "users"
-    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    full_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
-    role: Mapped[str] = mapped_column(String(50), nullable=False, default="viewer")
-    org_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    is_active: Mapped[bool] = mapped_column(default=True)
-    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-
-
-class ApiKey(UUIDMixin, TimestampMixin, Base):
-    __tablename__ = "api_keys"
-    key_hash: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
-    key_prefix: Mapped[str] = mapped_column(String(20), nullable=False)
-    user_id: Mapped[str] = mapped_column(String(36), nullable=False)
-    org_id: Mapped[str | None] = mapped_column(String(36), nullable=True)
-    name: Mapped[str] = mapped_column(String(100), nullable=False)
-    is_active: Mapped[bool] = mapped_column(default=True)
-    last_used: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+# Import all models so they register with Base.metadata
+from aerumentis.models.database_models import (  # noqa: E402, F401
+    ApiKey, ChatMessage, ChatSession, Document, Organization, User,
+)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:

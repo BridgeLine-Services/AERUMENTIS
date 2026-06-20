@@ -13,6 +13,53 @@ os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 
 import pytest
+import pytest_asyncio
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import StaticPool
+
+from aerumentis.core import database as db_module
+from aerumentis.core.database import Base
+
+
+@pytest_asyncio.fixture
+async def test_engine():
+    """Create a shared in-memory SQLite engine and patch the module-level engine/factory."""
+    engine = create_async_engine(
+        "sqlite+aiosqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+    )
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    factory = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+    # Patch the module-level objects so all code uses the test DB
+    original_engine = db_module.engine
+    original_factory = db_module.async_session_factory
+    db_module.engine = engine
+    db_module.async_session_factory = factory
+
+    # Also patch in security module which imports async_session_factory at module level
+    from aerumentis.core import security as sec_module
+    original_sec_factory = sec_module.async_session_factory
+    sec_module.async_session_factory = factory
+
+    yield engine
+
+    # Restore
+    db_module.engine = original_engine
+    db_module.async_session_factory = original_factory
+    sec_module.async_session_factory = original_sec_factory
+    await engine.dispose()
+
+
+@pytest_asyncio.fixture
+async def test_db(test_engine):
+    """Get a test database session."""
+    factory = async_sessionmaker(test_engine, class_=AsyncSession, expire_on_commit=False)
+    async with factory() as session:
+        yield session
 
 
 @pytest.fixture

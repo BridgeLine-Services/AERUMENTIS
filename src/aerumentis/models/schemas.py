@@ -49,6 +49,25 @@ class UserResponse(BaseModel):
     created_date: datetime
 
 
+class ApiKeyCreateRequest(BaseModel):
+    name: str = Field(..., min_length=1, max_length=100)
+    expires_at: datetime | None = None
+
+
+class ApiKeyResponse(BaseModel):
+    id: str
+    name: str
+    key_prefix: str
+    is_active: bool
+    created_date: datetime
+    last_used: datetime | None = None
+    expires_at: datetime | None = None
+
+
+class ApiKeyCreatedResponse(ApiKeyResponse):
+    key: str  # Only shown once on creation
+
+
 class IngestionResponse(BaseModel):
     document_id: str
     filename: str
@@ -58,6 +77,38 @@ class IngestionResponse(BaseModel):
     status: str
     error: str | None = None
     message: str = ""
+
+
+class DocumentMetadataResponse(BaseModel):
+    id: str
+    filename: str
+    file_type: str
+    chunk_count: int
+    total_tokens: int
+    status: str
+    aircraft_model: str | None = None
+    manual_type: str | None = None
+    manual_number: str | None = None
+    revision: str | None = None
+    effective_date: str | None = None
+    tags: list[str] = Field(default_factory=list)
+    created_date: datetime
+    updated_date: datetime
+
+
+class DocumentListResponse(BaseModel):
+    documents: list[DocumentMetadataResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class DocumentStatsResponse(BaseModel):
+    total_documents: int
+    total_chunks: int
+    total_tokens: int
+    by_aircraft_model: dict[str, int] = Field(default_factory=dict)
+    by_manual_type: dict[str, int] = Field(default_factory=dict)
 
 
 class CitationResponse(BaseModel):
@@ -91,13 +142,52 @@ class ChatResponse(BaseModel):
     generation_time_ms: float
     total_time_ms: float
     context_chunks_used: int
+    conversation_id: str | None = None
 
 
 class ChatStreamEvent(BaseModel):
     type: str
     content: str = ""
     citations: list[CitationResponse] = Field(default_factory=list)
+    conversation_id: str | None = None
     error: str | None = None
+
+
+class ChatSessionResponse(BaseModel):
+    id: str
+    title: str
+    message_count: int
+    is_active: bool
+    created_date: datetime
+    updated_date: datetime
+
+
+class ChatSessionListResponse(BaseModel):
+    sessions: list[ChatSessionResponse]
+    total: int
+    limit: int
+    offset: int
+
+
+class ChatMessageResponse(BaseModel):
+    id: str
+    role: str
+    content: str
+    model: str | None = None
+    tokens_used: int
+    total_time_ms: float
+    context_chunks_used: int
+    citations: list[CitationResponse] = Field(default_factory=list)
+    created_date: datetime
+
+
+class ChatHistoryResponse(BaseModel):
+    session: ChatSessionResponse
+    messages: list[ChatMessageResponse]
+
+
+class UpdateSessionRequest(BaseModel):
+    title: str = Field(..., min_length=1, max_length=255)
 
 
 class KnowledgeEntryCreate(BaseModel):
