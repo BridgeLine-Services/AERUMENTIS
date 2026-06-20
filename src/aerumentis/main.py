@@ -72,12 +72,12 @@ def create_app() -> FastAPI:
             "AI-powered operational brain for airports, maintenance teams, and airlines.\n\n"
             "**Module 1**: Maintenance Documentation AI (RAG-powered) — Active\n"
             "**Module 2**: Aerospace Knowledge Brain — Active\n"
-            "**Module 3**: Airport Ground Operations (Phase 3)\n\n"
+            "**Module 3**: Airport Ground Operations — Active\n\n"
             "## Authentication\n"
             "All protected endpoints require either a `Bearer` JWT token or an `X-API-Key` header.\n"
             "Register at `/api/v1/auth/register` to get a token, or create API keys at `/api/v1/auth/api-keys`."
         ),
-        version="0.2.0", docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json", lifespan=lifespan,
+        version="0.3.0", docs_url="/docs", redoc_url="/redoc", openapi_url="/openapi.json", lifespan=lifespan,
     )
     app.add_middleware(CORSMiddleware, allow_origins=settings.cors_origins_list,
                        allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
@@ -96,13 +96,13 @@ def create_app() -> FastAPI:
     @app.get("/", tags=["root"])
     async def root():
         return {
-            "name": "Aerumentis", "version": "0.2.0",
+            "name": "Aerumentis", "version": "0.3.0",
             "description": "AI-powered operational brain for airports, maintenance teams, and airlines.",
             "docs": "/docs", "health": "/api/v1/health",
             "modules": {
                 "maintenance": "Module 1 — Active (Documentation AI + Troubleshooting + Manual Search)",
                 "knowledge": "Module 2 — Active (Knowledge Entries + Repair History + Voice Interviews + Pattern Matching + Knowledge Graph)",
-                "operations": "Module 3 — Phase 3 (stub)",
+                "operations": "Module 3 — Active (Aircraft Tracking + Turnarounds + Crew + Equipment + Delay Prediction + Dashboard)",
             },
         }
     return app

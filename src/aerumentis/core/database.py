@@ -59,6 +59,9 @@ from aerumentis.models.database_models import (  # noqa: E402, F401
 from aerumentis.models.phase2_models import (  # noqa: E402, F401
     KnowledgeEdge, KnowledgeEntry, KnowledgeNode, RepairHistory, VoiceInterview,
 )
+from aerumentis.models.phase3_models import (  # noqa: E402, F401
+    Aircraft, Equipment, GroundCrew, OperationsAlert, Turnaround, TurnaroundTask,
+)
 
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
